@@ -1,0 +1,18 @@
+{
+  "name": "numapi",
+  "version": "1.0.0",
+  "description": "API untuk konversi angka format panjang menjadi ringkas (contoh: 1000 jadi 1k)",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "api",
+    "vercel",
+    "number",
+    "converter"
+  ],
+  "author": "",
+  "license": "ISC"
+}
