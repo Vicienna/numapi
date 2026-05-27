@@ -1,5 +1,4 @@
 export default function handler(req, res) {
-  // Ambil parameter 'n' dari query URL (contoh: /api?n=1500)
   const { n } = req.query;
 
   if (!n) {
@@ -8,7 +7,7 @@ export default function handler(req, res) {
     });
   }
 
-  // Ubah input string menjadi tipe data number
+  // Menggunakan parseFloat agar mendukung string angka super panjang maupun notasi eksponensial (misal: 1.5e45)
   const num = parseFloat(n);
 
   if (isNaN(num)) {
@@ -17,20 +16,44 @@ export default function handler(req, res) {
     });
   }
 
-  // Gunakan API bawaan JS untuk memformat angka secara otomatis
-  const formatter = new Intl.NumberFormat('en-US', {
-    notation: "compact",
-    compactDisplay: "short",
-    maximumFractionDigits: 1 // Mengatur batas 1 angka di belakang koma (contoh: 1.1k)
-  });
+  // Jika angka absolutnya di bawah 1000, kembalikan string biasa
+  if (Math.abs(num) < 1000) {
+    return res.status(200).json({ 
+      original: n, 
+      formatted: num.toString() 
+    });
+  }
 
-  // Intl akan menghasilkan huruf kapital (K, M, B, T). 
-  // Kita ubah ke lowercase agar sesuai permintaan (k, m, b, t).
-  const formattedNumber = formatter.format(num).toLowerCase();
+  // 1. Array Suffix Standar (Sampai Quetta / 10^30)
+  const SI_SUFFIXES = ["", "k", "m", "b", "t", "p", "e", "z", "y", "r", "q"];
 
-  // Kembalikan respon
+  // Menghitung tingkatan (tier) eksponen per ribuan (10^3)
+  const tier = Math.floor(Math.log10(Math.abs(num)) / 3);
+  
+  let suffix = "";
+  
+  // Perhitungan skala pembagi agar presisi desimal tetap terjaga
+  const scale = Math.pow(10, tier * 3);
+  const scaledNum = num / scale;
+
+  // 2. Logika Penentuan Suffix
+  if (tier < SI_SUFFIXES.length) {
+    // Jika masih di bawah atau sama dengan Quetta, gunakan suffix resmi
+    suffix = SI_SUFFIXES[tier];
+  } else {
+    // Jika melampaui Quetta (> 10^30), generate suffix alphabet otomatis (aa, ab, ac... zz)
+    const alphaIndex = tier - SI_SUFFIXES.length; 
+    const firstChar = String.fromCharCode(97 + Math.floor(alphaIndex / 26));
+    const secondChar = String.fromCharCode(97 + (alphaIndex % 26));
+    suffix = firstChar + secondChar;
+  }
+
+  // Format hasil akhir: batasi 1 angka di belakang koma, buang .0 jika angka bulat
+  const formattedNumber = scaledNum.toFixed(1).replace(/\.0$/, '') + suffix;
+
   return res.status(200).json({
-    original: num,
+    original: n,
+    parsed_value: num,
     formatted: formattedNumber
   });
 }
